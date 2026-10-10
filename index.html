@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSE322 Project Submission</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1b1f23; --quiet:#5b6470; --line:#dde0e4; --accent:#1f5fbf; --accent-ink:#fff;
+          --good:#1a7f4b; --bad:#b3261e; --warn:#8a5a00; --code:#eef0f3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171a; --card:#1c2024; --ink:#e8eaed; --quiet:#98a2ae; --line:#2e343b; --accent:#6aa3ff; --accent-ink:#0b1220;
+            --good:#4cc38a; --bad:#ff7b72; --warn:#e3b341; --code:#252a30; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.7rem; margin:0 0 4px; } h2 { font-size:1.2rem; margin:0 0 12px; }
+  .sub { color:var(--quiet); margin:0 0 24px; }
+  section, .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px; margin:0 0 20px; }
+  ol, ul { padding-left:1.2em; margin:8px 0; } li { margin:4px 0; }
+  pre, code { background:var(--code); border-radius:6px; font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { padding:1px 5px; } pre { padding:12px 14px; overflow-x:auto; margin:8px 0; }
+  a { color:var(--accent); }
+  .deadline { display:inline-block; padding:4px 10px; border-radius:99px; border:1px solid var(--line); font-size:.9rem; }
+  .deadline.closed { color:var(--bad); border-color:var(--bad); }
+  label { display:block; font-weight:600; margin:14px 0 4px; }
+  input[type=number], input[type=text] { width:100%; max-width:320px; padding:9px 10px; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; }
+  input[type=text] { text-transform:uppercase; letter-spacing:.08em; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:22px; text-align:center; color:var(--quiet); cursor:pointer; }
+  .drop.over { border-color:var(--accent); color:var(--accent); } .drop strong { color:var(--ink); }
+  button { font:inherit; font-weight:600; padding:10px 18px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:16px; }
+  .checks { list-style:none; padding:0; margin:12px 0 0; }
+  .checks li { padding:3px 0 3px 26px; position:relative; }
+  .checks li::before { position:absolute; left:0; font-weight:700; }
+  .checks li.ok::before { content:"✓"; color:var(--good); } .checks li.no::before { content:"✗"; color:var(--bad); }
+  .checks li.no { color:var(--bad); }
+  .msg { padding:10px 12px; border-radius:7px; margin-top:14px; border:1px solid var(--line); }
+  .msg.good { border-color:var(--good); } .msg.bad { border-color:var(--bad); } .msg.warn { border-color:var(--warn); }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:.95rem; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); } td.n, th.n { text-align:right; }
+  .bar { height:8px; background:var(--code); border-radius:4px; overflow:hidden; margin-top:12px; } .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .hidden { display:none; } .small { font-size:.9rem; color:var(--quiet); }
+  details summary { cursor:pointer; font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CSE322 · Home Appliances Control</h1>
+  <p class="sub">Project submission portal &nbsp;·&nbsp; <span id="deadline" class="deadline">deadline: loading…</span></p>
+
+  <section>
+    <h2>How it works</h2>
+    <ol>
+      <li>Download the <a href="cse322-starter.zip">starter folder</a> and read the <a href="Project_Description.pdf">project description</a>.</li>
+      <li>Build the project on the real board and fill in the folders as shown below.</li>
+      <li>Zip it, choose your team number, enter your team code and upload the zip here.</li>
+      <li>Within a minute or two this page shows your automated check result. You can fix problems and upload again: <strong>the latest upload before the deadline is the one that counts.</strong></li>
+    </ol>
+    <p class="small">Your team code was sent to your team by the instructor. Keep it private: it is the only thing that lets someone submit for your team.</p>
+  </section>
+
+  <section>
+    <h2>How your zip must be organised</h2>
+<pre>
+TEAM.md                 team members, contributions, demo video link
+firmware/
+  main.c
+  mcal/                 register-level drivers (.c / .h)
+  hal/                  hal.h (do not change the signatures) and hal.c
+  app/                  app.c, app.h: protocol, alarm, door events
+mobile-app/             your mobile app project (source files only)
+report/
+  report.pdf            the technical report, one PDF file
+</pre>
+    <ul>
+      <li>Zip the <em>contents</em> of the folder. A single top-level folder inside the zip is fine too.</li>
+      <li><code>TEAM.md</code>: 4 to 6 members, each with a contribution, and a line <code>Demo video link: https://…</code>. <strong>Do not put the video in the zip</strong>: upload it to YouTube or Google Drive and paste the link.</li>
+      <li><code>firmware/app/</code> may only include <code>hal.h</code> and standard C headers: no TM4C registers or headers, no MCAL includes. The HAL may include the MCAL.</li>
+      <li>Source files only: no <code>.axf</code>, <code>.o</code>, build or IDE folders. Maximum zip size is <span id="maxmb">20</span> MB.</li>
+    </ul>
+    <details>
+      <summary>What the automated check does (and does not) cover</summary>
+      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board: lamp, plug, door, temperature every second, alarm, <code>STATUS?</code> and message handling. Passing means the <em>protocol</em> is right. The mobile app, the door log, mounting and the report are marked by the instructors from your video and report, so a perfect automated result is not the final mark.</p>
+    </details>
+  </section>
+
+  <section class="card" id="submit">
+    <h2>Submit</h2>
+    <label for="team">Team number</label>
+    <input id="team" type="number" min="1" max="140" inputmode="numeric" autocomplete="off">
+    <label for="code">Team code</label>
+    <input id="code" type="text" placeholder="XXXXX-XXXXX" autocomplete="off" maxlength="12" spellcheck="false">
+    <label>Your zip</label>
+    <div class="drop" id="drop" tabindex="0"><strong>Drop your .zip here</strong> or click to choose<div id="fname" class="small"></div></div>
+    <input id="file" type="file" accept=".zip,application/zip" class="hidden">
+
+    <ul class="checks" id="checks"></ul>
+    <label id="forcewrap" class="hidden" style="font-weight:400"><input type="checkbox" id="force"> Upload anyway (I understand the problems above)</label>
+
+    <div class="row">
+      <button id="send" disabled>Upload</button>
+      <button id="check" class="secondary">Check my latest result</button>
+      <span id="note" class="small"></span>
+    </div>
+    <div class="bar hidden" id="bar"><i id="barfill"></i></div>
+    <div id="out"></div>
+  </section>
+</main>
+
+<script src="jszip.min.js"></script>
+<script src="config.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const WORKER = (window.PORTAL && window.PORTAL.worker || "").replace(/\/$/, "");
+let CFG = { deadline: null, max_zip_mb: 20, max_submissions: 20, teams: 140 };
+let zipFile = null, precheckOk = false;
+
+// ---------- the same rules as tools/check_submission.py -------------------------------------------------
+const HW = /tm4c123|TM4C123|inc\/hw_|driverlib|\bGPIO_PORT\w*|\bSYSCTL_\w+|\bNVIC_\w+|0x[4E][0-9A-Fa-f]{7}/;
+const HAL_FUNCS = ["Hal_Init","Hal_LampSet","Hal_PlugSet","Hal_DoorIsOpen","Hal_TempReadDeciC","Hal_UartRead","Hal_UartWrite","Hal_Millis"];
+
+async function precheck(file) {
+  const problems = [], goods = [];
+  const mb = file.size / 1048576;
+  if (mb > CFG.max_zip_mb) problems.push(`The zip is ${mb.toFixed(1)} MB; the limit is ${CFG.max_zip_mb} MB (no videos or build output)`);
+  let z;
+  try { z = await JSZip.loadAsync(file); } catch { return { problems: ["This file cannot be opened as a zip"], goods }; }
+  let names = Object.keys(z.files).filter((n) => !z.files[n].dir && !n.startsWith("__MACOSX/") && !n.endsWith(".DS_Store"));
+  const tops = new Set(names.map((n) => n.split("/")[0]));
+  let prefix = "";
+  if (tops.size === 1 && names.every((n) => n.includes("/"))) prefix = [...tops][0] + "/";
+  const files = new Map(names.map((n) => [n.slice(prefix.length), z.files[n]]));
+  const text = async (n) => files.has(n) ? files.get(n).async("string") : "";
+  const list = (dir, re) => [...files.keys()].filter((n) => n.startsWith(dir + "/") && re.test(n));
+
+  // TEAM.md
+  if (!files.has("TEAM.md")) problems.push("TEAM.md is missing");
+  else {
+    const t = await text("TEAM.md");
+    if (t.includes("TODO")) problems.push("TEAM.md still contains TODO placeholders");
+    const rows = t.split(/\r?\n/).filter((r) => r.startsWith("|")).slice(2);
+    const members = rows.filter((r) => r.replace(/^\||\|$/g, "").split("|").filter((c) => c.trim()).length >= 3);
+    if (members.length < 4 || members.length > 6) problems.push(`TEAM.md lists ${members.length} members with a contribution; teams have 4 to 6`);
+    const m = t.match(/Demo video link:\s*(\S+)/);
+    if (!m || !m[1].toLowerCase().startsWith("http")) problems.push("TEAM.md needs a line 'Demo video link: https://...'");
+    if (!problems.some((p) => p.startsWith("TEAM.md"))) goods.push("TEAM.md: members, contributions and video link");
+  }
+  // layers
+  for (const layer of ["mcal", "hal", "app"]) {
+    if (list("firmware/" + layer, /\.(c|h)$/).length) goods.push(`firmware/${layer}/ has source files`);
+    else problems.push(`firmware/${layer}/ has no .c or .h files`);
+  }
+  if (!files.has("firmware/hal/hal.h")) problems.push("firmware/hal/hal.h (the HAL contract) is missing");
+  else { const h = await text("firmware/hal/hal.h"); for (const f of HAL_FUNCS) if (!h.includes(f)) problems.push(`hal.h no longer declares ${f}`); }
+  let layerBad = false;
+  for (const n of list("firmware/app", /\.(c|h)$/)) {
+    const t = await text(n);
+    if (HW.test(t)) { problems.push(`${n}: the app layer must not use TM4C registers or headers`); layerBad = true; }
+    if (/#include\s+"[^"]*mcal[^"]*"/.test(t)) { problems.push(`${n}: the app layer must not include the MCAL`); layerBad = true; }
+  }
+  for (const n of list("firmware/hal", /\.(c|h)$/)) if (/#include\s+"[^"]*app[^"]*"/.test(await text(n))) { problems.push(`${n}: the HAL must not include the app layer`); layerBad = true; }
+  if (!layerBad) goods.push("Layer rules respected (app only uses hal.h)");
+  // app + report
+  const appFiles = [...files.keys()].filter((n) => n.startsWith("mobile-app/") && n !== "mobile-app/README.md");
+  if (appFiles.length) goods.push("mobile-app/ has files"); else problems.push("mobile-app/ is empty: add the app project");
+  if (!files.has("report/report.pdf")) problems.push("report/report.pdf is missing");
+  else {
+    const head = (await files.get("report/report.pdf").async("uint8array")).slice(0, 5);
+    if (new TextDecoder().decode(head) !== "%PDF-") problems.push("report/report.pdf is not a PDF file"); else goods.push("report/report.pdf is present");
+  }
+  for (const n of files.keys()) if (/\.(mp4|mov|avi|mkv)$/i.test(n)) problems.push(`${n}: videos go in the link in TEAM.md, not in the zip`);
+  return { problems, goods };
+}
+
+function renderChecks({ problems, goods }) {
+  $("checks").innerHTML = "";
+  for (const g of goods) $("checks").insertAdjacentHTML("beforeend", `<li class="ok"></li>`), $("checks").lastChild.textContent = g;
+  for (const p of problems) $("checks").insertAdjacentHTML("beforeend", `<li class="no"></li>`), $("checks").lastChild.textContent = p;
+  precheckOk = problems.length === 0;
+  $("forcewrap").classList.toggle("hidden", precheckOk);
+  $("force").checked = false;
+  refresh();
+}
+
+// ---------- form state ------------------------------------------------------------------------------------------
+const closed = () => CFG.deadline && Date.now() > Date.parse(CFG.deadline);
+function refresh() {
+  const ready = zipFile && $("team").value && $("code").value.replace(/[^A-Za-z0-9]/g, "").length === 10 && !closed() && (precheckOk || $("force").checked);
+  $("send").disabled = !ready;
+  $("check").disabled = !($("team").value && $("code").value);
+}
+async function setFile(f) {
+  zipFile = f; $("fname").textContent = f ? `${f.name} (${(f.size / 1048576).toFixed(1)} MB)` : "";
+  $("out").innerHTML = ""; if (!f) { $("checks").innerHTML = ""; return; }
+  renderChecks(await precheck(f));
+}
+$("drop").onclick = () => $("file").click();
+$("drop").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") $("file").click(); };
+$("file").onchange = (e) => setFile(e.target.files[0] || null);
+["dragover", "dragenter"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", (e) => setFile(e.dataTransfer.files[0] || null));
+["team", "code", "force"].forEach((id) => $(id).addEventListener("input", refresh));
+try { const t = localStorage.getItem("cse322-team"); if (t) $("team").value = t; } catch {}
+
+// ---------- talking to the Worker ----------------------------------------------------------------------------------
+function show(kind, html) { $("out").innerHTML = `<div class="msg ${kind}">${html}</div>`; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderResult(res, subs) {
+  const items = Object.values(res.items || {});
+  let h = `<strong>Automated result for upload #${subs}: ${res.automated_marks} / ${res.automated_out_of}</strong>`;
+  if (res.status === "bad_zip") h += `<p>${esc(res.message)} Check how you made the zip and upload again.</p>`;
+  else {
+    h += res.structure_ok ? `<p>Folder layout: OK.</p>` : `<p>Folder layout problems:</p><ul>${res.structure.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
+    if (!res.tests_ran) h += `<p>Your <code>firmware/app</code> did not compile. First errors:</p><pre>${esc(res.build_error || "")}</pre>`;
+    else if (res.timed_out) h += `<p>The tests took too long and were stopped: look for an endless loop in <code>App_Update</code>.</p>`;
+    if (items.length) {
+      h += `<table><tr><th>Item</th><th class="n">Tests</th><th class="n">Marks</th></tr>` +
+        items.map((i) => `<tr><td>${esc(i.item)}${i.failing.length ? `<div class="small">failing: ${i.failing.map(esc).join(", ")}</div>` : ""}</td><td class="n">${i.passed}/${i.tests}</td><td class="n">${i.earned}/${i.marks}</td></tr>`).join("") + `</table>`;
+    }
+    h += `<p class="small">The mobile app, door log, mounting and report are marked by the instructors, so this is not the final mark.</p>`;
+  }
+  const good = res.status === "graded" && res.structure_ok && res.automated_marks === res.automated_out_of;
+  show(good ? "good" : "warn", h);
+}
+
+async function poll(team, code, subs) {
+  for (let i = 0; i < 120; i++) {                       // up to ~10 minutes
+    try {
+      const r = await (await fetch(`${WORKER}/status?team=${team}&code=${encodeURIComponent(code)}`)).json();
+      if (r.state === "graded") { renderResult(r.result, r.submissions); $("note").textContent = ""; return; }
+      $("note").textContent = `Checking your upload… (${i * 5}s)`;
+    } catch { $("note").textContent = "Waiting for the server…"; }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  show("warn", "The check is taking longer than usual (many teams are uploading). Your upload is saved. Come back in a few minutes and press <em>Check my latest result</em>.");
+}
+
+$("send").onclick = () => {
+  const team = $("team").value, code = $("code").value;
+  try { localStorage.setItem("cse322-team", team); } catch {}
+  const fd = new FormData(); fd.set("team", team); fd.set("code", code); fd.set("file", zipFile, "submission.zip");
+  const xhr = new XMLHttpRequest();
+  $("send").disabled = true; $("bar").classList.remove("hidden"); $("barfill").style.width = "0"; $("out").innerHTML = "";
+  xhr.upload.onprogress = (e) => { if (e.lengthComputable) $("barfill").style.width = (100 * e.loaded / e.total) + "%"; $("note").textContent = "Uploading…"; };
+  xhr.onerror = () => { $("bar").classList.add("hidden"); show("bad", "Could not reach the server. Check your internet connection and try again."); refresh(); };
+  xhr.onload = () => {
+    $("bar").classList.add("hidden"); let r = {};
+    try { r = JSON.parse(xhr.responseText); } catch {}
+    if (xhr.status === 200 && r.ok) {
+      show("good", `Upload #${r.submission_no} received (${r.remaining} uploads left). Running the automated check…`);
+      poll(team, code, r.submission_no);
+    } else { show("bad", esc(r.error || `Upload failed (${xhr.status}).`)); $("note").textContent = ""; }
+    refresh();
+  };
+  xhr.open("POST", WORKER + "/submit"); xhr.send(fd);
+};
+
+$("check").onclick = async () => {
+  const team = $("team").value, code = $("code").value;
+  show("warn", "Looking up your latest upload…");
+  try {
+    const r = await (await fetch(`${WORKER}/status?team=${team}&code=${encodeURIComponent(code)}`)).json();
+    if (!r.ok) show("bad", esc(r.error));
+    else if (r.state === "none") show("warn", "No upload yet for this team.");
+    else if (r.state === "pending") { show("warn", `Upload #${r.submissions} (${new Date(r.last_upload).toLocaleString()}) is being checked…`); poll(team, code, r.submissions); }
+    else renderResult(r.result, r.submissions);
+  } catch { show("bad", "Could not reach the server."); }
+};
+
+// ---------- config + deadline ---------------------------------------------------------------------------------------------
+function paintDeadline() {
+  const el = $("deadline");
+  if (!CFG.deadline) { el.textContent = "deadline: to be announced"; return; }
+  const left = Date.parse(CFG.deadline) - Date.now();
+  if (left <= 0) { el.textContent = "submissions are closed"; el.classList.add("closed"); refresh(); return; }
+  const d = Math.floor(left / 864e5), h = Math.floor(left % 864e5 / 36e5), m = Math.floor(left % 36e5 / 6e4);
+  el.textContent = `deadline: ${new Date(CFG.deadline).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} · ${d}d ${h}h ${m}m left`;
+}
+(async () => {
+  try { CFG = Object.assign(CFG, await (await fetch(WORKER + "/config")).json()); } catch {}
+  $("team").max = CFG.teams; $("maxmb").textContent = CFG.max_zip_mb; paintDeadline(); setInterval(paintDeadline, 30000); refresh();
+})();
+</script>
+</body>
+</html>
