@@ -70,21 +70,21 @@ firmware/
   main.c
   mcal/                 register-level drivers (.c / .h)
   hal/                  hal.h (do not change the signatures) and hal.c
-  app/                  app.c, app.h: protocol, alarm, door events
-mobile-app/             your mobile app project (source files only)
+  app/                  app.c, app.h: terminal protocol, alarm, door log
 report/
   report.pdf            the technical report, one PDF file
 </pre>
     <ul>
       <li>Zip the <em>contents</em> of the folder. A single top-level folder inside the zip is fine too.</li>
-      <li><strong>Mobile app:</strong> export your App Inventor project (Projects → Export selected project (.aia)) and put the <code>.aia</code> file in <code>mobile-app/</code>. The check reads its blocks. Blocks that are disabled or not inside any event or procedure never run, so they do not count.</li>
+      <li><strong>Terminal:</strong> there is no mobile app. You talk to the board from PuTTY over the LaunchPad's USB cable (UART0, 115200 baud). The commands are in the project description.</li>
+      <li><strong>Report:</strong> export <code>report/report.pdf</code> as a text PDF (not scanned pages). It needs the sections listed in the project description and at least 3 pictures.</li>
       <li><code>TEAM.md</code>: 4 to 6 members, each with a contribution, and a line <code>Demo video link: https://…</code>. <strong>Do not put the video in the zip</strong>: upload it to YouTube or Google Drive and paste the link.</li>
       <li><code>firmware/app/</code> may only include <code>hal.h</code> and standard C headers: no TM4C registers or headers, no MCAL includes. The HAL may include the MCAL.</li>
       <li>Source files only: no <code>.axf</code>, <code>.o</code>, build or IDE folders. Maximum zip size is <span id="maxmb">20</span> MB.</li>
     </ul>
     <details>
       <summary>What the automated check does (and does not) cover</summary>
-      <p>It checks the layout above, runs your <code>firmware/app/*.c</code> on a PC against a simulated board (lamp, plug, door, temperature every second, alarm, <code>STATUS?</code>, message handling), checks that each layer has real code and respects the layer rules, and reads your App Inventor blocks for the protocol, the clock polling, the alert and the door log. Mounting and the report are marked by the instructors from your video and report, and they also check the app on a phone, so a perfect automated result is not the final mark.</p>
+      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It reads your MCAL and HAL for real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. It cannot see your wiring or pin numbers, so test on the real board. The marks shown here are computed by the same rules for every team.</p>
     </details>
   </section>
 
@@ -166,8 +166,6 @@ async function precheck(file) {
   for (const n of list("firmware/hal", /\.(c|h)$/)) if (/#include\s+"[^"]*app[^"]*"/.test(await text(n))) { problems.push(`${n}: the HAL must not include the app layer`); layerBad = true; }
   if (!layerBad) goods.push("Layer rules respected (app only uses hal.h)");
   // app + report
-  const appFiles = [...files.keys()].filter((n) => n.startsWith("mobile-app/") && n !== "mobile-app/README.md");
-  if (appFiles.length) goods.push("mobile-app/ has files"); else problems.push("mobile-app/ is empty: add the app project");
   if (!files.has("report/report.pdf")) problems.push("report/report.pdf is missing");
   else {
     const head = (await files.get("report/report.pdf").async("uint8array")).slice(0, 5);
@@ -220,21 +218,18 @@ function renderResult(res, subs) {
     h += res.structure_ok ? `<p>Folder layout: OK.</p>` : `<p>Folder layout problems:</p><ul>${res.structure.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
     if (!res.tests_ran) h += `<p>Your <code>firmware/app</code> did not compile. First errors:</p><pre>${esc(res.build_error || "")}</pre>`;
     else if (res.timed_out) h += `<p>The tests took too long and were stopped: look for an endless loop in <code>App_Update</code>.</p>`;
-    h += `<p class="small">Mobile app: ${esc(res.app_note || "not found")}</p>`;
     if (items.length) {
-      h += `<table><tr><th>Item</th><th class="n">Board tests</th><th class="n">App checks</th><th class="n">Marks</th></tr>` +
+      h += `<table><tr><th>Item</th><th class="n">Tests / checks</th><th class="n">Marks</th></tr>` +
         items.map((i) => {
           const notes = [];
-          if (i.board && i.board.failing.length) notes.push("board failing: " + i.board.failing.map(esc).join(", "));
-          if (i.app && i.app.missing.length) notes.push("app missing: " + i.app.missing.map(esc).join("; "));
+          if (i.board && i.board.failing.length) notes.push("failing: " + i.board.failing.map(esc).join(", "));
+          if (i.checks && i.checks.missing.length) notes.push("missing: " + i.checks.missing.map(esc).join("; "));
           if (i.layer_code_lines && i.earned === 0) notes.push("each layer needs real code and the layer rules must hold");
-          const b = i.board && i.board.tests ? `${i.board.passed}/${i.board.tests}` : "–";
-          const a = i.app && i.app.total ? `${i.app.passed}/${i.app.total}` : "–";
-          return `<tr><td>${esc(i.item)}${notes.length ? `<div class="small">${notes.join("<br>")}</div>` : ""}</td><td class="n">${b}</td><td class="n">${a}</td><td class="n">${i.earned}/${i.marks}</td></tr>`;
+          const t = i.board && i.board.tests ? `${i.board.passed}/${i.board.tests}` : (i.checks && i.checks.total ? `${i.checks.passed}/${i.checks.total}` : "–");
+          return `<tr><td>${esc(i.item)}${notes.length ? `<div class="small">${notes.join("<br>")}</div>` : ""}</td><td class="n">${t}</td><td class="n">${i.earned}/${i.marks}</td></tr>`;
         }).join("") + `</table>`;
     }
-    const manual = (res.manual_items || []).map((m) => `${esc(m.item)} (${m.marks})`).join(", ");
-    h += `<p class="small">Marked by the instructors from your video and report: ${manual || "mounting and report"}. The app checks read your App Inventor blocks and show the app is built for the protocol; the instructors still check it on the phone, so this is not the final mark.</p>`;
+    h += `<p class="small">These marks come from automatic checks only. They cannot see your wiring, so make sure everything also works on the real board.</p>`;
   }
   const good = res.status === "graded" && res.structure_ok && res.automated_marks === res.automated_out_of;
   show(good ? "good" : "warn", h);
