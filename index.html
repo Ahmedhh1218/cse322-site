@@ -72,20 +72,22 @@ firmware/
   hal/                  the six device headers are given (lamp.h, plug.h, door.h, lm35.h, serial.h,
                         timebase.h): do not change them. Your .c files: any names
   app/                  app.c, app.h: terminal protocol, alarm, door log
+Debug/Exe/*.out         the image IAR builds (ELF). Keep it in the zip: the grader runs it
 report/
   report.pdf            the technical report, one PDF file
 </pre>
     <ul>
+      <li>Zip your whole IAR project folder (it contains the sources, the project files and the built <code>Debug/Exe/*.out</code>). <strong>Build the project again right before zipping</strong>, so the <code>.out</code> matches your sources.</li>
       <li>Zip the <em>contents</em> of the folder. A single top-level folder inside the zip is fine too.</li>
       <li><strong>Terminal:</strong> there is no mobile app. You talk to the board from PuTTY over the LaunchPad's USB cable (UART0, 115200 baud). The commands are in the project description.</li>
       <li><strong>Report:</strong> export <code>report/report.pdf</code> as a text PDF (not scanned pages). It needs the sections listed in the project description and at least 3 pictures.</li>
       <li><code>TEAM.md</code>: 4 to 6 members, each with a contribution, and a line <code>Demo video link: https://…</code>. <strong>Do not put the video in the zip</strong>: upload it to YouTube or Google Drive and paste the link.</li>
       <li><code>firmware/app/</code> may only include the six HAL headers and standard C headers: no TM4C registers or headers, no MCAL includes. Everything below the HAL headers is yours to organise: file names, number of files and driver style are free.</li>
-      <li>Source files only: no <code>.axf</code>, <code>.o</code>, build or IDE folders. Maximum zip size is <span id="maxmb">20</span> MB.</li>
+      <li>Do not delete the build folder. Keep the zip small: skip <code>Debug/Obj</code> and <code>Debug/List</code> if you need to. Maximum zip size is <span id="maxmb">20</span> MB.</li>
     </ul>
     <details>
       <summary>What the automated check does (and does not) cover</summary>
-      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It looks in your MCAL and HAL files (any names) for the HAL functions and real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. It cannot see your wiring or pin numbers, so test on the real board. The marks shown here are computed by the same rules for every team.</p>
+      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, and runs your built <code>.out</code> on an emulated TM4C123 (GPIO, UART0, ADC, SysTick, clock gates), typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It looks in your MCAL and HAL files (any names) for the HAL functions and real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. The emulator reports wrong pins, a wrong baud rate or a missing peripheral clock as failing tests; it cannot see your wiring, so still test on the real board. For every functional item, both your sources and your image must pass: the lower result counts. The marks shown here are computed by the same rules for every team.</p>
     </details>
   </section>
 
@@ -176,6 +178,12 @@ async function precheck(file) {
     const head = (await files.get("report/report.pdf").async("uint8array")).slice(0, 5);
     if (new TextDecoder().decode(head) !== "%PDF-") problems.push("report/report.pdf is not a PDF file"); else goods.push("report/report.pdf is present");
   }
+  let image = null;
+  for (const [n, f] of files) if (/\.(out|elf|axf)$/i.test(n) && !f.dir) {
+    const h = await f.async("uint8array"); if (h.length > 20 && h[0] === 0x7f && h[1] === 0x45 && h[2] === 0x4c && h[3] === 0x46) { image = n; break; }
+  }
+  if (image) goods.push(`Firmware image found: ${image}`);
+  else problems.push("No firmware image: build the project in IAR and keep Debug/Exe/*.out (an ELF file) in the zip");
   for (const n of files.keys()) if (/\.(mp4|mov|avi|mkv)$/i.test(n)) problems.push(`${n}: videos go in the link in TEAM.md, not in the zip`);
   return { problems, goods };
 }
@@ -230,7 +238,8 @@ function renderResult(res, subs) {
           if (i.board && i.board.failing.length) notes.push("failing: " + i.board.failing.map(esc).join(", "));
           if (i.checks && i.checks.missing.length) notes.push("missing: " + i.checks.missing.map(esc).join("; "));
           if (i.layer_code_lines && i.earned === 0) notes.push("each layer needs real code and the layer rules must hold");
-          const t = i.board && i.board.tests ? `${i.board.passed}/${i.board.tests}` : (i.checks && i.checks.total ? `${i.checks.passed}/${i.checks.total}` : "–");
+          let t = i.board && i.board.tests ? `${i.board.passed}/${i.board.tests}` : (i.checks && i.checks.total ? `${i.checks.passed}/${i.checks.total}` : "–");
+          if (i.image_tests && i.image_tests.tests) t += ` · image ${i.image_tests.passed}/${i.image_tests.tests}`;
           return `<tr><td>${esc(i.item)}${notes.length ? `<div class="small">${notes.join("<br>")}</div>` : ""}</td><td class="n">${t}</td><td class="n">${i.earned}/${i.marks}</td></tr>`;
         }).join("") + `</table>`;
     }
