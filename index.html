@@ -68,8 +68,9 @@
 TEAM.md                 team members, contributions, demo video link
 firmware/
   main.c
-  mcal/                 register-level drivers (.c / .h)
-  hal/                  hal.h (do not change the signatures) and hal.c
+  mcal/                 your drivers, one module each: dio.c/.h, uart.c/.h, adc.c/.h ... (or TivaWare)
+  hal/                  one module per device: lamp.h/.c, plug.h/.c, door.h/.c, lm35.h/.c, serial.h/.c, timebase.h/.c
+                        (the .h files are given: do not change the signatures)
   app/                  app.c, app.h: terminal protocol, alarm, door log
 report/
   report.pdf            the technical report, one PDF file
@@ -79,12 +80,12 @@ report/
       <li><strong>Terminal:</strong> there is no mobile app. You talk to the board from PuTTY over the LaunchPad's USB cable (UART0, 115200 baud). The commands are in the project description.</li>
       <li><strong>Report:</strong> export <code>report/report.pdf</code> as a text PDF (not scanned pages). It needs the sections listed in the project description and at least 3 pictures.</li>
       <li><code>TEAM.md</code>: 4 to 6 members, each with a contribution, and a line <code>Demo video link: https://…</code>. <strong>Do not put the video in the zip</strong>: upload it to YouTube or Google Drive and paste the link.</li>
-      <li><code>firmware/app/</code> may only include <code>hal.h</code> and standard C headers: no TM4C registers or headers, no MCAL includes. The HAL may include the MCAL.</li>
+      <li><code>firmware/app/</code> may only include the six HAL headers and standard C headers: no TM4C registers or headers, no MCAL includes. The HAL modules use your MCAL (or TivaWare).</li>
       <li>Source files only: no <code>.axf</code>, <code>.o</code>, build or IDE folders. Maximum zip size is <span id="maxmb">20</span> MB.</li>
     </ul>
     <details>
       <summary>What the automated check does (and does not) cover</summary>
-      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It reads your MCAL and HAL for real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. It cannot see your wiring or pin numbers, so test on the real board. The marks shown here are computed by the same rules for every team.</p>
+      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It reads your MCAL and HAL (one module per device) for real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. It cannot see your wiring or pin numbers, so test on the real board. The marks shown here are computed by the same rules for every team.</p>
     </details>
   </section>
 
@@ -122,7 +123,7 @@ let zipFile = null, precheckOk = false;
 
 // ---------- the same rules as tools/check_submission.py -------------------------------------------------
 const HW = /tm4c123|TM4C123|inc\/hw_|driverlib|\bGPIO_PORT\w*|\bSYSCTL_\w+|\bNVIC_\w+|0x[4E][0-9A-Fa-f]{7}/;
-const HAL_FUNCS = ["Hal_Init","Hal_LampSet","Hal_PlugSet","Hal_DoorIsOpen","Hal_TempReadDeciC","Hal_UartRead","Hal_UartWrite","Hal_Millis"];
+const HAL_CONTRACT = { lamp: ["Lamp_Init","Lamp_Set"], plug: ["Plug_Init","Plug_Set"], door: ["Door_Init","Door_IsOpen"], lm35: ["Lm35_Init","Lm35_ReadDeciC"], serial: ["Serial_Init","Serial_Read","Serial_Write"], timebase: ["Time_Init","Time_Millis"] };
 
 async function precheck(file) {
   const problems = [], goods = [];
@@ -155,16 +156,20 @@ async function precheck(file) {
     if (list("firmware/" + layer, /\.(c|h)$/).length) goods.push(`firmware/${layer}/ has source files`);
     else problems.push(`firmware/${layer}/ has no .c or .h files`);
   }
-  if (!files.has("firmware/hal/hal.h")) problems.push("firmware/hal/hal.h (the HAL contract) is missing");
-  else { const h = await text("firmware/hal/hal.h"); for (const f of HAL_FUNCS) if (!h.includes(f)) problems.push(`hal.h no longer declares ${f}`); }
+  for (const [mod, fns] of Object.entries(HAL_CONTRACT)) {
+    const hn = `firmware/hal/${mod}.h`;
+    if (!files.has(hn)) problems.push(`${hn} (HAL contract) is missing`);
+    else { const h = await text(hn); for (const f of fns) if (!h.includes(f)) problems.push(`${mod}.h no longer declares ${f}`); }
+  }
   let layerBad = false;
   for (const n of list("firmware/app", /\.(c|h)$/)) {
     const t = await text(n);
     if (HW.test(t)) { problems.push(`${n}: the app layer must not use TM4C registers or headers`); layerBad = true; }
-    if (/#include\s+"[^"]*mcal[^"]*"/.test(t)) { problems.push(`${n}: the app layer must not include the MCAL`); layerBad = true; }
+    const mcalH = new Set(list("firmware/mcal", /\.h$/).map((x) => x.split("/").pop()));
+    if ([...t.matchAll(/#include\s+[<"]([^>"]+)[>"]/g)].some((m) => m[1].includes("mcal") || mcalH.has(m[1].split("/").pop()))) { problems.push(`${n}: the app layer must not include the MCAL`); layerBad = true; }
   }
   for (const n of list("firmware/hal", /\.(c|h)$/)) if (/#include\s+"[^"]*app[^"]*"/.test(await text(n))) { problems.push(`${n}: the HAL must not include the app layer`); layerBad = true; }
-  if (!layerBad) goods.push("Layer rules respected (app only uses hal.h)");
+  if (!layerBad) goods.push("Layer rules respected (app only uses the HAL headers)");
   // app + report
   if (!files.has("report/report.pdf")) problems.push("report/report.pdf is missing");
   else {
