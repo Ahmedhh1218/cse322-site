@@ -71,7 +71,8 @@ firmware/
   mcal/                 your drivers: any files and structure (registers or TivaWare)
   hal/                  the six device headers are given (lamp.h, plug.h, door.h, lm35.h, serial.h,
                         timebase.h): do not change them. Your .c files: any names
-  app/                  app.c, app.h: terminal protocol, alarm, door log
+  app/                  app.c, app.h: Bluetooth protocol, alarm
+mobile-app/             your phone app: App Inventor export (.aia) or any framework's source
 Debug/Exe/*.out         the image IAR builds (ELF). Keep it in the zip: the grader runs it
 report/
   report.pdf            the technical report, one PDF file
@@ -79,7 +80,8 @@ report/
     <ul>
       <li>Zip your whole IAR project folder (it contains the sources, the project files and the built <code>Debug/Exe/*.out</code>). <strong>Build the project again right before zipping</strong>, so the <code>.out</code> matches your sources.</li>
       <li>Zip the <em>contents</em> of the folder. A single top-level folder inside the zip is fine too.</li>
-      <li><strong>Terminal:</strong> there is no mobile app. You talk to the board from PuTTY over the LaunchPad's USB cable (UART0, 115200 baud). The commands are in the project description.</li>
+      <li><strong>Bluetooth:</strong> the board and the phone app exchange text lines through the HC-05 (UART1, PB0/PB1, 9600 baud). The messages are in the project description. The board answers <code>STATUS?</code> with five lines: <code>LAMP:x</code>, <code>PLUG:x</code>, <code>DOOR:OPEN|CLOSED</code>, <code>TEMP:t</code>, <code>ALARM:x</code>. The door log is kept by the app.</li>
+      <li><strong>Mobile app:</strong> App Inventor: Projects &gt; Export selected project, and save the <code>.aia</code> in <code>mobile-app/</code>.</li>
       <li><strong>Report:</strong> export <code>report/report.pdf</code> as a text PDF (not scanned pages). It needs the sections listed in the project description and at least 3 pictures.</li>
       <li><code>TEAM.md</code>: 4 to 6 members, each with a contribution, and a line <code>Demo video link: https://…</code>. <strong>Do not put the video in the zip</strong>: upload it to YouTube or Google Drive and paste the link.</li>
       <li><code>firmware/app/</code> may only include the six HAL headers and standard C headers: no TM4C registers or headers, no MCAL includes. Everything below the HAL headers is yours to organise: file names, number of files and driver style are free.</li>
@@ -87,7 +89,7 @@ report/
     </ul>
     <details>
       <summary>What the automated check does (and does not) cover</summary>
-      <p>It checks the layout above and runs your <code>firmware/app/*.c</code> on a PC against a simulated board, and runs your built <code>.out</code> on an emulated TM4C123 (GPIO, UART0, ADC, SysTick, clock gates), typing commands the way PuTTY does: lamp, plug, door events, temperature every second, alarm, door log, echo, backspace, <code>HELP</code> and <code>STATUS</code>. It looks in your MCAL and HAL files (any names) for the HAL functions and real drivers (GPIO, ADC, UART0, SysTick) and compiles them with the ARM compiler, checks that each layer has real code and respects the layer rules, and checks that your report has the required sections and pictures. The emulator reports wrong pins, a wrong baud rate or a missing peripheral clock as failing tests; it cannot see your wiring, so still test on the real board. For every functional item, both your sources and your image must pass: the lower result counts. The marks shown here are computed by the same rules for every team.</p>
+      <p>It checks the layout above, runs your <code>firmware/app/*.c</code> on a PC against a simulated board, and runs your built <code>.out</code> on an emulated TM4C123 (GPIO, UART1, ADC, SysTick, clock gates) with an HC-05 that talks to it the way your phone does: lamp, plug, door events, temperature every second, limit and alarm, <code>STATUS?</code>, split and bad lines. Each of those items is half board and half app. The board half needs both your sources and your image to pass (the lower result counts). The app half is a static check of your <code>.aia</code> (or app source): it must send and parse the protocol messages from blocks that actually run, show the door state, temperature and an alert, connect to the HC-05, and keep a door log with phone-clock time stamps. The grader also looks in your MCAL and HAL files (any names) for the HAL functions and real drivers (GPIO, ADC, UART1, SysTick), compiles them with the ARM compiler, checks the layer rules, and checks that your report has the required sections and pictures. The emulator reports wrong pins, a wrong baud rate, the wrong UART or a missing peripheral clock as failing tests; it cannot see your wiring or run your app on a phone, so test both on the real board. The marks shown here are computed by the same rules for every team.</p>
     </details>
   </section>
 
@@ -178,6 +180,20 @@ async function precheck(file) {
     const head = (await files.get("report/report.pdf").async("uint8array")).slice(0, 5);
     if (new TextDecoder().decode(head) !== "%PDF-") problems.push("report/report.pdf is not a PDF file"); else goods.push("report/report.pdf is present");
   }
+  const appFiles = [...files.keys()].filter((n) => /^(?:[^/]+\/)?mobile-app\/.+\.(aia|kt|java|dart|js|ts|swift|cs)$/i.test(n));
+  if (!appFiles.length) problems.push("mobile-app/ has no app project: export the App Inventor project (.aia) into it");
+  else {
+    goods.push(`Mobile app found: ${appFiles[0]}`);
+    const aia = appFiles.find((n) => /\.aia$/i.test(n));
+    if (aia) {
+      try {
+        const inner = await JSZip.loadAsync(await files.get(aia).async("uint8array"));
+        let bky = ""; for (const [n, f] of Object.entries(inner.files)) if (/\.bky$/.test(n)) bky += await f.async("string");
+        const miss = ["LAMP:", "PLUG:", "LIMIT:", "STATUS?", "TEMP:", "DOOR:", "ALARM:"].filter((m) => !bky.includes(m));
+        if (miss.length) problems.push(`The app's blocks never mention: ${miss.join(" ")} (the grader looks for these messages)`);
+      } catch { problems.push(`${aia} could not be read: export it again from App Inventor`); }
+    }
+  }
   let image = null;
   for (const [n, f] of files) if (/\.(out|elf|axf)$/i.test(n) && !f.dir) {
     const h = await f.async("uint8array"); if (h.length > 20 && h[0] === 0x7f && h[1] === 0x45 && h[2] === 0x4c && h[3] === 0x46) { image = n; break; }
@@ -237,9 +253,12 @@ function renderResult(res, subs) {
           const notes = [];
           if (i.board && i.board.failing.length) notes.push("failing: " + i.board.failing.map(esc).join(", "));
           if (i.checks && i.checks.missing.length) notes.push("missing: " + i.checks.missing.map(esc).join("; "));
+          if (i.app && i.app.total && i.app.missing.length) notes.push("app is missing: " + i.app.missing.map(esc).join("; "));
+          else if (i.app && !i.app.total && i.app.missing.length) notes.push("app: " + i.app.missing.map(esc).join("; "));
           if (i.layer_code_lines && i.earned === 0) notes.push("each layer needs real code and the layer rules must hold");
           let t = i.board && i.board.tests ? `${i.board.passed}/${i.board.tests}` : (i.checks && i.checks.total ? `${i.checks.passed}/${i.checks.total}` : "–");
           if (i.image_tests && i.image_tests.tests) t += ` · image ${i.image_tests.passed}/${i.image_tests.tests}`;
+          if (i.app && i.app.total) t += ` · app ${i.app.passed}/${i.app.total}`;
           return `<tr><td>${esc(i.item)}${notes.length ? `<div class="small">${notes.join("<br>")}</div>` : ""}</td><td class="n">${t}</td><td class="n">${i.earned}/${i.marks}</td></tr>`;
         }).join("") + `</table>`;
     }
